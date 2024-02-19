@@ -60,7 +60,7 @@ def expression_to_arxiv_query(expression):
 
 def expression_to_scolar_query(expression):
     for word in set(re.findall(r"(\w+)", expression)):
-        expression = expression.replace(word, f"\"{word.replace('_', ' ')}\"")
+        expression = expression.replace(word, f"\"{word.replace('_', ' ')}\"" if "_" in word else word)
 
     expression = expression \
         .replace("&~", " -") \
