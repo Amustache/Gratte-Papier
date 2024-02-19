@@ -274,7 +274,9 @@ def process_scrapping(set_progress, data):
                 "abstract": result.bib.get("abstract", None),
                 "journal": result.bib.get("venue", None),
                 "url_pdf": result.bib.get("eprint", None),
-                "url_others": f"canonical:https://scholar.google.com{result.citations_link}:;source:{result.bib.get('url', None)}",
+                "url_others": f"canonical:https://scholar.google.com{result.citations_link};source:{result.bib.get('url', None)}"
+                if hasattr(result, "citations_link")
+                else f"source:{result.bib.get('url', None)}",
                 "from": "Google Scholar",
             }).to_frame().T
             df = pd.concat([df, next_row], ignore_index=True)
