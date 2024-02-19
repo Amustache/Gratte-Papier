@@ -1,5 +1,7 @@
 temp/
 cache/
+templates/
+test_data.py
 
 # Created by https://www.toptal.com/developers/gitignore/api/windows,macos,linux,python,pycharm+all
 # Edit at https://www.toptal.com/developers/gitignore?templates=windows,macos,linux,python,pycharm+all

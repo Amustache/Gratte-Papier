@@ -112,7 +112,6 @@ app.layout = dbc.Container(
                 dbc.Col(controls, md=4),
                 dbc.Col(table, md=8),
             ],
-            align="center",
         ),
         dcc.Interval(id="interval", disabled=True),
         dcc.Store(id="data_store"),
