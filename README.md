@@ -1,5 +1,16 @@
 # Gratte-Papier
 
+<!-- TOC start (generated with https://github.com/derlin/bitdowntoc) -->
+
+- [Introduction](#introduction)
+- [Screenshots](#screenshots)
+- [Setup](#setup)
+- [Usage](#usage)
+- [Contributing](#contributing)
+- [Contact](#contact)
+
+<!-- TOC end -->
+
 Paper scrapper to gather metadata.
 
  Interface graphique pour la récupération de métadonnées de papiers scientifiques. Permet la préparation de scoping review, de revue de littérature systématique, et de méta analyse.
