@@ -14,7 +14,7 @@ from scrapper import SCRAPPER_COLUMNS, prep_expression, expression_to_arxiv_quer
 import gettext
 
 # i18n / Translation
-for language in ["fr", "en"]:
+for language in ["fr"]:
     language_translations = gettext.translation("base", "locales", languages=[language])
     language_translations.install()
 
