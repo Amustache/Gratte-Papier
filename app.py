@@ -8,7 +8,7 @@ import pandas as pd
 from dash.exceptions import PreventUpdate
 from scholarly import scholarly
 
-from scrapper import SCRAPPER_COLUMNS, prep_expression, expression_to_arxiv_query, expression_to_scolar_query, COOLDOWN, \
+from scrapper import SCRAPPER_COLUMNS, prep_expression, expression_to_arxiv_query, expression_to_scholar_query, COOLDOWN, \
     NUM_RETRIES, BATCH_RESULTS
 
 import gettext
@@ -199,12 +199,12 @@ def start_scrapping(n, included, excluded, platforms, max_results):
             data["arxiv_query"] = arxiv_query
 
         if "scholar" in platforms:
-            scolar_query = expression_to_scolar_query(expression)
+            scholar_query = expression_to_scholar_query(expression)
             children += [
                 html.Dt(_("Google Scholar request"), className="col-4"),
-                html.Dd(html.Pre(scolar_query), id="r_scholar", className="col-8"),
+                html.Dd(html.Pre(scholar_query), id="r_scholar", className="col-8"),
             ]
-            data["scolar_query"] = scolar_query
+            data["scholar_query"] = scholar_query
 
         max_time = len(platforms) * (max_results // BATCH_RESULTS) * COOLDOWN
         children += [
@@ -246,10 +246,11 @@ def process_scrapping(set_progress, data):
     """
     Actual scrapping, happening in background, while updating the front.
     """
+    initial_query = data["input"] if "input" in data else None
     arxiv_query = data["arxiv_query"] if "arxiv_query" in data else None
-    scolar_query = data["scolar_query"] if "scolar_query" in data else None
+    scholar_query = data["scholar_query"] if "scholar_query" in data else None
     max_results = data["max_results"] if "max_results" in data else None
-    cur_est_total = ((arxiv_query is not None) + (scolar_query is not None)) * max_results
+    cur_est_total = ((arxiv_query is not None) + (scholar_query is not None)) * max_results
     cur_est_time = data["max_time"] if "max_time" in data else None
 
     df = pd.DataFrame()
@@ -272,6 +273,8 @@ def process_scrapping(set_progress, data):
                     [f"{link.title or 'canonical'}:{link.href}" for link in result.links if link.title != "pdf"]
                 ),
                 "from": "arXiv",
+                "initial_query": initial_query,
+                "arxiv_query": arxiv_query,
             }).to_frame().T
             df = pd.concat([df, next_row], ignore_index=True)
             cur_len = len(df.index)
@@ -289,12 +292,12 @@ def process_scrapping(set_progress, data):
             if i == max_results - 1:
                 break
 
-    cur_est_total = len(df.index) + max_results * (scolar_query is not None)
+    cur_est_total = len(df.index) + max_results * (scholar_query is not None)
 
-    if scolar_query:
-        scolar_gen = scholarly.search_pubs(scolar_query)
+    if scholar_query:
+        scholar_gen = scholarly.search_pubs(scholar_query)
 
-        for i, result in enumerate(scolar_gen):
+        for i, result in enumerate(scholar_gen):
             next_row = pd.Series({
                 "doi": None,  # No DOI on Google Scholar
                 "year": result.bib.get("year", None),
@@ -307,6 +310,8 @@ def process_scrapping(set_progress, data):
                 if hasattr(result, "citations_link")
                 else f"source:{result.bib.get('url', None)}",
                 "from": "Google Scholar",
+                "initial_query": initial_query,
+                "scholar_query": scholar_query,
             }).to_frame().T
             df = pd.concat([df, next_row], ignore_index=True)
             cur_len = len(df.index)

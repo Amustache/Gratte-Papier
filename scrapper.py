@@ -59,7 +59,7 @@ def expression_to_arxiv_query(expression):
     return expression
 
 
-def expression_to_scolar_query(expression):
+def expression_to_scholar_query(expression):
     for word in set(re.findall(r"(\w+)", expression)):
         expression = expression.replace(word, f"\"{word.replace('_', ' ')}\"" if "_" in word else word)
 
@@ -100,12 +100,12 @@ async def arxiv_query_to_dataframe(query, max_results=MAX_RESULTS, num_retries=N
     yield df
 
 
-async def scolar_query_to_dataframe(query, max_results=MAX_RESULTS, num_retries=NUM_RETRIES, cooldown=COOLDOWN):
+async def scholar_query_to_dataframe(query, max_results=MAX_RESULTS, num_retries=NUM_RETRIES, cooldown=COOLDOWN):
     results = scholarly.search_pubs(query)
 
     df = pd.DataFrame()
 
-    for i, result in enumerate(tqdm(results, desc="scolar")):
+    for i, result in enumerate(tqdm(results, desc="scholar")):
         next_row = pd.Series({
             "doi": None,  # No DOI on Google Scholar
             "year": result.bib.get("year", None),
