@@ -2,7 +2,7 @@ import os
 import time
 
 import arxiv
-from dash import Dash, html, dcc, Output, Input, dash_table, DiskcacheManager, CeleryManager
+from dash import Dash, html, dcc, Output, Input, dash_table, DiskcacheManager, CeleryManager, State
 import dash_bootstrap_components as dbc
 import pandas as pd
 from dash.exceptions import PreventUpdate
@@ -130,6 +130,7 @@ app.layout = dbc.Container(
         ]),
         dcc.Interval(id="interval", disabled=True),
         dcc.Store(id="data_store"),
+        dcc.Download(id="download"),
     ],
     fluid=True,
 )
@@ -336,6 +337,18 @@ def process_scrapping(set_progress, data):
     ]
 
     return df.to_dict(orient="records"), tooltip_data
+
+
+@app.callback(
+    Output("download", "data"),
+    Input("dl_all", "n_clicks"),
+    State("datatable", "data"),
+    State("data_store", "data"),
+    prevent_initial_call=True,
+)
+def download_excel(n_all, data, datastore):
+    df = pd.DataFrame(data)
+    return dcc.send_data_frame(df.to_excel, "gratte-papier_results.xlsx", sheet_name="results")
 
 
 if __name__ == "__main__":
