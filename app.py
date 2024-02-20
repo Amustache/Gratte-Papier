@@ -11,12 +11,21 @@ from scholarly import scholarly
 from scrapper import SCRAPPER_COLUMNS, prep_expression, expression_to_arxiv_query, expression_to_scolar_query, COOLDOWN, \
     NUM_RETRIES
 
+import gettext
+
+# i18n / Translation
+for language in ["fr", "en"]:
+    language_translations = gettext.translation("base", "locales", languages=[language])
+    language_translations.install()
+
+_ = language_translations.gettext
+
 # Cache for background callback
 if 'REDIS_URL' in os.environ:
     # Use Redis & Celery if REDIS_URL set as an env variable
     from celery import Celery
 
-    celery_app = Celery(__name__, broker=os.environ['REDIS_URL'], backend=os.environ['REDIS_URL'])
+    celery_app = Celery(__name__, broker=os.environ["REDIS_URL"], backend=os.environ["REDIS_URL"])
     background_callback_manager = CeleryManager(celery_app)
 else:
     # Diskcache for non-production apps when developing locally
@@ -36,18 +45,18 @@ controls = dbc.Card([
     # Options
     dbc.CardBody(dbc.Form([
         html.Div([
-            dbc.Label("Keywords to include (AND, OR)", html_for="keywords_include"),
+            dbc.Label(_("Keywords to include (AND, OR)"), html_for="keywords_include"),
             dbc.Input(
                 id="keywords_include",
-                placeholder="e.g., \"(Machine Learning) OR (Apprentissage Automatisé)\"",
+                placeholder=_("e.g., \"(Machine Learning) OR (Apprentissage Automatisé)\""),
                 type="text"
             ),
         ]),
         html.Div([
-            dbc.Label("Keywords to exclude (NOT)", html_for="keywords_exclude"),
+            dbc.Label(_("Keywords to exclude (NOT)"), html_for="keywords_exclude"),
             dbc.Input(
                 id="keywords_exclude",
-                placeholder="e.g., \"Deep Learning\"",
+                placeholder=_("e.g., \"Deep Learning\""),
                 type="text"
             ),
         ]),
@@ -65,12 +74,12 @@ controls = dbc.Card([
             ),
         ]),
         html.Div([
-            dbc.Label("Number of results (per platform)", html_for="max_results"),
+            dbc.Label(_("Number of results (per platform)"), html_for="max_results"),
             dbc.Input(id="max_results", type="number", value=100, min=0, step=1),
         ]),
         html.Div([
-            dbc.Button("Cancel", id="cancel_button", color="secondary", className="mt-2 me-2 disabled"),
-            dbc.Button("Search", id="search_button", color="success", className="mt-2"),
+            dbc.Button(_("Cancel"), id="cancel_button", color="secondary", className="mt-2 me-2 disabled"),
+            dbc.Button(_("Search"), id="search_button", color="success", className="mt-2"),
         ], className="float-end")
     ])),
 
@@ -127,16 +136,16 @@ def human_time(seconds):
     :return: Done, or minutes left, or hours left.
     """
     if seconds <= 0:
-        return "Done!"
+        return _("Done!")
     if seconds < 60:
-        return "Less than one minute left"
+        return _("Less than one minute left")
     else:
         minutes = round(seconds / 60)
         if minutes < 60:
-            return f"About {minutes} minute{'s' if minutes != 1 else ''} left"
+            return _("About {} minute{} left").format(minutes, "s" if minutes != 1 else "")
         else:
             hours = round(minutes / 60)
-            return f"About {hours} hour{'s' if hours != 1 else ''} left"
+            return _("About {} hour{} left").format(hours, "s" if hours != 1 else "")
 
 
 @app.callback(
@@ -155,7 +164,7 @@ def start_scrapping(n, included, excluded, platforms, max_results):
     """
     if n and included and platforms and max_results > 0:
         children = [
-            html.Dt("Entries found", className="col-4"),
+            html.Dt(_("Entries found"), className="col-4"),
             html.Dd("0", id="found", className="col-8"),
         ]
         data = {}
@@ -166,7 +175,7 @@ def start_scrapping(n, included, excluded, platforms, max_results):
 
         expression = prep_expression(included + excluded)
         children += [
-            html.Dt("Expression", className="col-4"),
+            html.Dt(_("Expression"), className="col-4"),
             html.Dd(html.Pre(expression), id="expression", className="col-8"),
         ]
         data["expression"] = expression
@@ -174,7 +183,7 @@ def start_scrapping(n, included, excluded, platforms, max_results):
         if "arxiv" in platforms:
             arxiv_query = expression_to_arxiv_query(expression)
             children += [
-                html.Dt("ArXiv request", className="col-4"),
+                html.Dt(_("ArXiv request"), className="col-4"),
                 html.Dd(html.Pre(arxiv_query), id="r_arxiv", className="col-8"),
             ]
             data["arxiv_query"] = arxiv_query
@@ -182,14 +191,14 @@ def start_scrapping(n, included, excluded, platforms, max_results):
         if "scholar" in platforms:
             scolar_query = expression_to_scolar_query(expression)
             children += [
-                html.Dt("Google Scholar request", className="col-4"),
+                html.Dt(_("Google Scholar request"), className="col-4"),
                 html.Dd(html.Pre(scolar_query), id="r_scholar", className="col-8"),
             ]
             data["scolar_query"] = scolar_query
 
         max_time = len(platforms) * max_results
         children += [
-            html.Dt("Estimated time left", className="col-4"),
+            html.Dt(_("Estimated time left"), className="col-4"),
             html.Dd(human_time(max_time), id="estimated", className="col-8"),
         ]
         data["max_results"] = max_results
