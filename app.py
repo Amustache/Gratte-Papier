@@ -180,8 +180,10 @@ def start_scrapping(n, included, excluded, platforms, max_results):
         included = included.lower() if included else ""
         excluded = " ".join(
             [f" not {word}" for word in excluded.lower().replace("not", " ").split(" ")]) if excluded else ""
+        final = included + excluded
+        data["input"] = final
 
-        expression = prep_expression(included + excluded)
+        expression = prep_expression(final)
         children += [
             html.Dt(_("Expression"), className="col-4"),
             html.Dd(html.Pre(expression), id="expression", className="col-8"),
