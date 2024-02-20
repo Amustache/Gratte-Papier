@@ -1,26 +1,23 @@
-import asyncio
 import os
 import time
 
 import arxiv
-from dash import Dash, html, dcc, callback, Output, Input, State, dash_table, DiskcacheManager, CeleryManager
+from dash import Dash, html, dcc, Output, Input, dash_table, DiskcacheManager, CeleryManager
 import dash_bootstrap_components as dbc
-import plotly.express as px
 import pandas as pd
 from dash.exceptions import PreventUpdate
 from scholarly import scholarly
 
 from scrapper import SCRAPPER_COLUMNS, prep_expression, expression_to_arxiv_query, expression_to_scolar_query, COOLDOWN, \
     NUM_RETRIES
-from test_data import TEST_DATA
 
+# Cache for background callback
 if 'REDIS_URL' in os.environ:
     # Use Redis & Celery if REDIS_URL set as an env variable
     from celery import Celery
 
     celery_app = Celery(__name__, broker=os.environ['REDIS_URL'], backend=os.environ['REDIS_URL'])
     background_callback_manager = CeleryManager(celery_app)
-
 else:
     # Diskcache for non-production apps when developing locally
     import diskcache
@@ -28,59 +25,63 @@ else:
     cache = diskcache.Cache("./cache")
     background_callback_manager = DiskcacheManager(cache)
 
-app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP],
-           background_callback_manager=background_callback_manager)
+app = Dash(
+    __name__,
+    external_stylesheets=[dbc.themes.BOOTSTRAP],
+    background_callback_manager=background_callback_manager
+)
 
+# Control panel on the left
 controls = dbc.Card([
-    dbc.CardBody(dbc.Form(
-        [
-            html.Div(
-                [
-                    dbc.Label("Keywords to include (AND, OR)", html_for="keywords_include"),
-                    dbc.Input(id="keywords_include",
-                              placeholder="e.g., \"(Machine Learning) OR (Apprentissage Automatisé)\"", type="text"),
-                ]
+    # Options
+    dbc.CardBody(dbc.Form([
+        html.Div([
+            dbc.Label("Keywords to include (AND, OR)", html_for="keywords_include"),
+            dbc.Input(
+                id="keywords_include",
+                placeholder="e.g., \"(Machine Learning) OR (Apprentissage Automatisé)\"",
+                type="text"
             ),
-            html.Div(
-                [
-                    dbc.Label("Keywords to exclude (NOT)", html_for="keywords_exclude"),
-                    dbc.Input(id="keywords_exclude", placeholder="e.g., \"Deep Learning\"", type="text"),
-                ]
+        ]),
+        html.Div([
+            dbc.Label("Keywords to exclude (NOT)", html_for="keywords_exclude"),
+            dbc.Input(
+                id="keywords_exclude",
+                placeholder="e.g., \"Deep Learning\"",
+                type="text"
             ),
-            html.Div(
-                [
-                    dbc.Label("Platforms", html_for="platforms"),
-                    dbc.Checklist(
-                        options=[
-                            {"label": "arXiv", "value": "arxiv"},
-                            {"label": "Google Scholar", "value": "scholar"},
-                        ],
-                        value=[],
-                        id="platforms",
-                        inline=True,
-                        switch=True,
-                    ),
-                ]
+        ]),
+        html.Div([
+            dbc.Label("Platforms", html_for="platforms"),
+            dbc.Checklist(
+                options=[
+                    {"label": "arXiv", "value": "arxiv"},
+                    {"label": "Google Scholar", "value": "scholar"},
+                ],
+                value=[],
+                id="platforms",
+                inline=True,
+                switch=True,
             ),
-            html.Div(
-                [
-                    dbc.Label("Number of results (per platform)", html_for="max_results"),
-                    dbc.Input(id="max_results", type="number", value=100, min=0, step=1),
-                ]
-            ),
-            html.Div([
-                dbc.Button("Cancel", id="cancel_button", color="secondary", className="mt-2 me-2 disabled"),
-                dbc.Button("Search", id="search_button", color="success", className="mt-2"),
-            ], className="float-end")
-        ],
-    )),
+        ]),
+        html.Div([
+            dbc.Label("Number of results (per platform)", html_for="max_results"),
+            dbc.Input(id="max_results", type="number", value=100, min=0, step=1),
+        ]),
+        html.Div([
+            dbc.Button("Cancel", id="cancel_button", color="secondary", className="mt-2 me-2 disabled"),
+            dbc.Button("Search", id="search_button", color="success", className="mt-2"),
+        ], className="float-end")
+    ])),
+
+    # Information
     dbc.CardFooter([
         html.Dl(id="infos", className="row"),
         dbc.Progress(id="progress", animated=True, striped=True, style={"visibility": "hidden"}),
     ]),
-]
-)
+])
 
+# Results
 table = dash_table.DataTable(
     id="datatable",
     data=None,  # Dynamic
@@ -107,12 +108,10 @@ app.layout = dbc.Container(
     [
         html.H1("Gratte-Papier"),
         html.Hr(),
-        dbc.Row(
-            [
-                dbc.Col(controls, md=4),
-                dbc.Col(table, md=8),
-            ],
-        ),
+        dbc.Row([
+            dbc.Col(controls, md=4),
+            dbc.Col(table, md=8),
+        ]),
         dcc.Interval(id="interval", disabled=True),
         dcc.Store(id="data_store"),
     ],
@@ -121,17 +120,23 @@ app.layout = dbc.Container(
 
 
 def human_time(seconds):
+    """
+    Simple transform from seconds to human read time.
+
+    :param seconds: Seconds
+    :return: Done, or minutes left, or hours left.
+    """
     if seconds <= 0:
-        return "Terminé !"
+        return "Done!"
     if seconds < 60:
-        return "Moins d'une minute"
+        return "Less than one minute left"
     else:
         minutes = round(seconds / 60)
         if minutes < 60:
-            return f"Environ {minutes} minute{'s' if minutes != 1 else ''}"
+            return f"About {minutes} minute{'s' if minutes != 1 else ''} left"
         else:
             hours = round(minutes / 60)
-            return f"Environ {hours} heure{'s' if hours != 1 else ''}"
+            return f"About {hours} hour{'s' if hours != 1 else ''} left"
 
 
 @app.callback(
@@ -145,9 +150,12 @@ def human_time(seconds):
     Input("max_results", "value"),
 )
 def start_scrapping(n, included, excluded, platforms, max_results):
+    """
+    Generate requests, and store them in the datastore, which triggers the scrapping.
+    """
     if n and included and platforms and max_results > 0:
         children = [
-            html.Dt("Entrées trouvées", className="col-4"),
+            html.Dt("Entries found", className="col-4"),
             html.Dd("0", id="found", className="col-8"),
         ]
         data = {}
@@ -166,7 +174,7 @@ def start_scrapping(n, included, excluded, platforms, max_results):
         if "arxiv" in platforms:
             arxiv_query = expression_to_arxiv_query(expression)
             children += [
-                html.Dt("Requête arXiv", className="col-4"),
+                html.Dt("ArXiv request", className="col-4"),
                 html.Dd(html.Pre(arxiv_query), id="r_arxiv", className="col-8"),
             ]
             data["arxiv_query"] = arxiv_query
@@ -174,14 +182,14 @@ def start_scrapping(n, included, excluded, platforms, max_results):
         if "scholar" in platforms:
             scolar_query = expression_to_scolar_query(expression)
             children += [
-                html.Dt("Requête Google Scholar", className="col-4"),
+                html.Dt("Google Scholar request", className="col-4"),
                 html.Dd(html.Pre(scolar_query), id="r_scholar", className="col-8"),
             ]
             data["scolar_query"] = scolar_query
 
         max_time = len(platforms) * max_results
         children += [
-            html.Dt("Temps estimé", className="col-4"),
+            html.Dt("Estimated time left", className="col-4"),
             html.Dd(human_time(max_time), id="estimated", className="col-8"),
         ]
         data["max_results"] = max_results
@@ -216,6 +224,9 @@ def start_scrapping(n, included, excluded, platforms, max_results):
     prevent_initial_call=True,
 )
 def process_scrapping(set_progress, data):
+    """
+    Actual scrapping, happening in background, while updating the front.
+    """
     arxiv_query = data["arxiv_query"] if "arxiv_query" in data else None
     scolar_query = data["scolar_query"] if "scolar_query" in data else None
     max_results = data["max_results"] if "max_results" in data else None
