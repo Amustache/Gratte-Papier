@@ -31,7 +31,7 @@ msgstr "Mots-clés à exclure (NOT)"
 
 #: app.py:59
 msgid "e.g., \"Deep Learning\""
-msgstr "e.g., \"DeepLearning\""
+msgstr "e.g., \"Deep Learning\""
 
 #: app.py:77
 msgid "Number of results (per platform)"

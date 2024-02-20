@@ -123,8 +123,8 @@ app.layout = dbc.Container(
                 table,
                 html.Div([
                     dbc.Button(_("Download selected (Excel)"), id="dl_selected", color="secondary",
-                               className="mt-2 me-2 disabled"),
-                    dbc.Button(_("Download all (Excel)"), id="dl_all", color="principal", className="mt-2"),
+                               className="mt-2 me-2"),
+                    dbc.Button(_("Download all (Excel)"), id="dl_all", color="primary", className="mt-2"),
                 ], className="float-end")
             ], md=8),
         ]),
@@ -309,6 +309,9 @@ def process_scrapping(set_progress, data):
             cur_len = len(df.index)
             cur_est_time -= 1
 
+            if i == max_results - 1:
+                break
+
             if not (i + 1) % COOLDOWN:
                 set_progress((
                     str(cur_len),
@@ -317,9 +320,6 @@ def process_scrapping(set_progress, data):
                     str(human_time(cur_est_time)),
                 ))
                 time.sleep(COOLDOWN)
-
-            if i == max_results - 1:
-                break
 
     set_progress((
         str(len(df.index)),
