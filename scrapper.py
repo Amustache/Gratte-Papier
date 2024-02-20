@@ -8,6 +8,7 @@ from tqdm.auto import tqdm
 import asyncio
 
 COOLDOWN = 5
+BATCH_RESULTS = 10
 NUM_RETRIES = 10
 MAX_RESULTS = 100
 SCRAPPER_COLUMNS = {

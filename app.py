@@ -9,7 +9,7 @@ from dash.exceptions import PreventUpdate
 from scholarly import scholarly
 
 from scrapper import SCRAPPER_COLUMNS, prep_expression, expression_to_arxiv_query, expression_to_scolar_query, COOLDOWN, \
-    NUM_RETRIES
+    NUM_RETRIES, BATCH_RESULTS
 
 import gettext
 
@@ -203,7 +203,7 @@ def start_scrapping(n, included, excluded, platforms, max_results):
             ]
             data["scolar_query"] = scolar_query
 
-        max_time = len(platforms) * max_results
+        max_time = len(platforms) * (max_results // BATCH_RESULTS) * COOLDOWN
         children += [
             html.Dt(_("Estimated time left"), className="col-4"),
             html.Dd(human_time(max_time), id="estimated", className="col-8"),
@@ -246,8 +246,8 @@ def process_scrapping(set_progress, data):
     arxiv_query = data["arxiv_query"] if "arxiv_query" in data else None
     scolar_query = data["scolar_query"] if "scolar_query" in data else None
     max_results = data["max_results"] if "max_results" in data else None
-    cur_est_total = max_results * ((arxiv_query is not None) + (scolar_query is not None))
-    cur_est_time = cur_est_total * ((arxiv_query is not None) + (scolar_query is not None))
+    cur_est_total = ((arxiv_query is not None) + (scolar_query is not None)) * max_results
+    cur_est_time = data["max_time"] if "max_time" in data else None
 
     df = pd.DataFrame()
 
@@ -272,9 +272,8 @@ def process_scrapping(set_progress, data):
             }).to_frame().T
             df = pd.concat([df, next_row], ignore_index=True)
             cur_len = len(df.index)
-            cur_est_time -= 1
 
-            if not (i + 1) % COOLDOWN:
+            if not (i + 1) % BATCH_RESULTS:
                 set_progress((
                     str(cur_len),
                     str(cur_est_total),
@@ -282,6 +281,7 @@ def process_scrapping(set_progress, data):
                     str(human_time(cur_est_time)),
                 ))
                 time.sleep(COOLDOWN)
+                cur_est_time -= COOLDOWN
 
             if i == max_results - 1:
                 break
@@ -307,12 +307,11 @@ def process_scrapping(set_progress, data):
             }).to_frame().T
             df = pd.concat([df, next_row], ignore_index=True)
             cur_len = len(df.index)
-            cur_est_time -= 1
 
             if i == max_results - 1:
                 break
 
-            if not (i + 1) % COOLDOWN:
+            if not (i + 1) % BATCH_RESULTS:
                 set_progress((
                     str(cur_len),
                     str(cur_est_total),
@@ -320,6 +319,7 @@ def process_scrapping(set_progress, data):
                     str(human_time(cur_est_time)),
                 ))
                 time.sleep(COOLDOWN)
+                cur_est_time -= COOLDOWN
 
     set_progress((
         str(len(df.index)),
