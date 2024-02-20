@@ -119,7 +119,14 @@ app.layout = dbc.Container(
         html.Hr(),
         dbc.Row([
             dbc.Col(controls, md=4),
-            dbc.Col(table, md=8),
+            dbc.Col([
+                table,
+                html.Div([
+                    dbc.Button(_("Download selected (Excel)"), id="dl_selected", color="secondary",
+                               className="mt-2 me-2 disabled"),
+                    dbc.Button(_("Download all (Excel)"), id="dl_all", color="principal", className="mt-2"),
+                ], className="float-end")
+            ], md=8),
         ]),
         dcc.Interval(id="interval", disabled=True),
         dcc.Store(id="data_store"),
