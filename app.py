@@ -1,17 +1,13 @@
 import os
+import gettext
 import time
 
-import arxiv
 from dash import Dash, html, dcc, Output, Input, dash_table, DiskcacheManager, CeleryManager, State
 import dash_bootstrap_components as dbc
 import pandas as pd
 from dash.exceptions import PreventUpdate
-from scholarly import scholarly
 
-from scrapper import SCRAPPER_COLUMNS, prep_expression, expression_to_arxiv_query, expression_to_scholar_query, COOLDOWN, \
-    NUM_RETRIES, BATCH_RESULTS
-
-import gettext
+from scrapper import SCRAPPER_COLUMNS, prep_expression, COOLDOWN, BATCH_RESULTS, SUPPORTED_PLATFORMS
 
 # i18n / Translation
 for language in ["fr"]:
@@ -63,10 +59,7 @@ controls = dbc.Card([
         html.Div([
             dbc.Label("Platforms", html_for="platforms"),
             dbc.Checklist(
-                options=[
-                    {"label": "arXiv", "value": "arxiv"},
-                    {"label": "Google Scholar", "value": "scholar"},
-                ],
+                options=[{"label": v["name"], "value": k} for k, v in SUPPORTED_PLATFORMS.items()],
                 value=[],
                 id="platforms",
                 inline=True,
@@ -175,7 +168,7 @@ def start_scrapping(n, included, excluded, platforms, max_results):
             html.Dt(_("Entries found"), className="col-4"),
             html.Dd("0", id="found", className="col-8"),
         ]
-        data = {}
+        data = {"query": {}}
 
         included = included.lower() if included else ""
         excluded = " ".join(
@@ -190,21 +183,13 @@ def start_scrapping(n, included, excluded, platforms, max_results):
         ]
         data["expression"] = expression
 
-        if "arxiv" in platforms:
-            arxiv_query = expression_to_arxiv_query(expression)
+        for platform in platforms:
+            query = SUPPORTED_PLATFORMS[platform]["fun_query"](expression)
             children += [
-                html.Dt(_("ArXiv request"), className="col-4"),
-                html.Dd(html.Pre(arxiv_query), id="r_arxiv", className="col-8"),
+                html.Dt(_(f"{SUPPORTED_PLATFORMS[platform]['name']} request"), className="col-4"),
+                html.Dd(html.Pre(query), id=f"r_{platform}", className="col-8"),
             ]
-            data["arxiv_query"] = arxiv_query
-
-        if "scholar" in platforms:
-            scholar_query = expression_to_scholar_query(expression)
-            children += [
-                html.Dt(_("Google Scholar request"), className="col-4"),
-                html.Dd(html.Pre(scholar_query), id="r_scholar", className="col-8"),
-            ]
-            data["scholar_query"] = scholar_query
+            data["query"][platform] = query
 
         max_time = len(platforms) * (max_results // BATCH_RESULTS) * COOLDOWN
         children += [
@@ -246,87 +231,33 @@ def process_scrapping(set_progress, data):
     """
     Actual scrapping, happening in background, while updating the front.
     """
-    initial_query = data["input"] if "input" in data else None
-    arxiv_query = data["arxiv_query"] if "arxiv_query" in data else None
-    scholar_query = data["scholar_query"] if "scholar_query" in data else None
-    max_results = data["max_results"] if "max_results" in data else None
-    cur_est_total = ((arxiv_query is not None) + (scholar_query is not None)) * max_results
-    cur_est_time = data["max_time"] if "max_time" in data else None
+    initial_request = data["input"] if "input" in data else None
+    max_results = data["max_results"] if "max_results" in data else 0
+    cur_est_time = data["max_time"] if "max_time" in data else 0
 
     df = pd.DataFrame()
 
-    if arxiv_query:
-        client = arxiv.Client(num_retries=NUM_RETRIES)
-        search = arxiv.Search(query=arxiv_query, max_results=max_results)
-        arxiv_gen = client.results(search)
+    for i_platform, (platform, query) in enumerate(data["query"].items()):
+        cur_est_total = len(df.index) + max_results * (len(data["query"]) - i_platform)
 
-        for i, result in enumerate(arxiv_gen):
-            next_row = pd.Series({
-                "doi": f"10.48550/arXiv.{result.entry_id.split('/')[-1].split('v')[0]}",
-                "year": result.published.year,
-                "title": result.title,
-                "authors": ";".join(str(author) for author in result.authors),
-                "abstract": result.summary,
-                "journal": result.journal_ref,
-                "url_pdf": [link.href for link in result.links if link.title == "pdf"][0],
-                "url_others": ";".join(
-                    [f"{link.title or 'canonical'}:{link.href}" for link in result.links if link.title != "pdf"]
-                ),
-                "from": "arXiv",
-                "initial_query": initial_query,
-                "arxiv_query": arxiv_query,
-            }).to_frame().T
+        gen_results = SUPPORTED_PLATFORMS[platform]["fun_generator"](query)
+
+        for i, result in enumerate(gen_results):
+            next_row = SUPPORTED_PLATFORMS[platform]["fun_format"](result, query, initial_request)
             df = pd.concat([df, next_row], ignore_index=True)
             cur_len = len(df.index)
 
-            if not (i + 1) % BATCH_RESULTS:
-                set_progress((
-                    str(cur_len),
-                    str(cur_est_total),
-                    str(cur_len),
-                    str(human_time(cur_est_time)),
-                ))
-                time.sleep(COOLDOWN)
-                cur_est_time -= COOLDOWN
-
-            if i == max_results - 1:
-                break
-
-    cur_est_total = len(df.index) + max_results * (scholar_query is not None)
-
-    if scholar_query:
-        scholar_gen = scholarly.search_pubs(scholar_query)
-
-        for i, result in enumerate(scholar_gen):
-            next_row = pd.Series({
-                "doi": None,  # No DOI on Google Scholar
-                "year": result.bib.get("year", None),
-                "title": result.bib.get("title", None),
-                "authors": ";".join(result.bib.get("author", None)),
-                "abstract": result.bib.get("abstract", None),
-                "journal": result.bib.get("venue", None),
-                "url_pdf": result.bib.get("eprint", None),
-                "url_others": f"canonical:https://scholar.google.com{result.citations_link};source:{result.bib.get('url', None)}"
-                if hasattr(result, "citations_link")
-                else f"source:{result.bib.get('url', None)}",
-                "from": "Google Scholar",
-                "initial_query": initial_query,
-                "scholar_query": scholar_query,
-            }).to_frame().T
-            df = pd.concat([df, next_row], ignore_index=True)
-            cur_len = len(df.index)
-
-            if i == max_results - 1:
+            if i == max_results - 1:  # We are done
                 break
 
             if not (i + 1) % BATCH_RESULTS:
                 set_progress((
-                    str(cur_len),
-                    str(cur_est_total),
-                    str(cur_len),
-                    str(human_time(cur_est_time)),
+                    str(cur_len),  # Found entries so far
+                    str(cur_est_total),  # Total entries
+                    str(cur_len),  # Found entries so far
+                    str(human_time(cur_est_time)),  # Estimated time
                 ))
-                time.sleep(COOLDOWN)
+                time.sleep(COOLDOWN)  # Cooldown so that we are not considered spam
                 cur_est_time -= COOLDOWN
 
     set_progress((
