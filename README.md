@@ -39,6 +39,10 @@ This project requires Python 3.9+.
 4. Install what is needed: `pip install -r requirements.txt`
 5. Remember that you probably have a cup of tea or coffee getting cold.
 
+> Note: One of the dependencies, namely `scholarly`, might use Selenium for antispam purposes. This should not be the case here, as we are querying slowly; however, if it happens to be the case, you need to have a CLI firefox available.
+> 
+> Debian: https://www.linuxcapable.com/how-to-install-firefox-on-debian-linux/
+
 ## Usage
 
 1. (If not done already) Go into the root folder
