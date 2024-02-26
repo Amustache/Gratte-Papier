@@ -47,14 +47,13 @@ def prep_expression(request):
 
 def expression_to_arxiv_query(expression):
     for word in set(re.findall(r"(\w+)", expression)):
-        expression = expression.replace(word, f"all:{word}")
+        expression = expression.replace(word, f"all:{word.replace('_', ' ')}")
 
     expression = expression \
         .replace("&~", " ANDNOT ") \
         .replace("~", " ANDNOT ") \
         .replace("&", " AND ") \
         .replace("|", " OR ") \
-        .replace("_", " ")
 
     return expression
 
