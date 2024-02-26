@@ -1,3 +1,5 @@
+import os
+
 import arxiv
 from scholarly import scholarly
 import pandas as pd
@@ -5,7 +7,10 @@ import re
 import boolean
 import string
 
-from config import WOS_API_KEY
+if os.path.isfile("config.py"):
+    from config import WOS_API_KEY
+else:
+    WOS_API_KEY = None
 
 COOLDOWN = 5
 BATCH_RESULTS = 10
