@@ -124,6 +124,18 @@ def scholar_result_to_dataframe(result, query=None, initial_request=None):
     return next_row
 
 
+def expression_to_wos_query():
+    raise NotImplementedError
+
+
+def wos_query_to_generator():
+    raise NotImplementedError
+
+
+def wos_result_to_dataframe():
+    raise NotImplementedError
+
+
 SUPPORTED_PLATFORMS = {
     "arxiv": {
         "name": "arXiv",
@@ -136,5 +148,11 @@ SUPPORTED_PLATFORMS = {
         "fun_query": expression_to_scholar_query,
         "fun_generator": scholar_query_to_generator,
         "fun_format": scholar_result_to_dataframe,
+    },
+    "wos": {
+        "name": "Web of Science",
+        "fun_query": expression_to_wos_query,
+        "fun_generator": wos_query_to_generator,
+        "fun_format": wos_result_to_dataframe,
     }
 }
