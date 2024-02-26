@@ -125,15 +125,24 @@ def scholar_result_to_dataframe(result, query=None, initial_request=None):
     return next_row
 
 
-def expression_to_wos_query():
+def expression_to_wos_query(expression):
+    for word in set(re.findall(r"(\w+)", expression)):
+        expression = expression.replace(word, f"ALL:({word.replace('_', ' ')})")
+
+    expression = expression \
+        .replace("&~", " NOT ") \
+        .replace("~", " NOT ") \
+        .replace("&", " AND ") \
+        .replace("|", " OR ") \
+
+    return expression
+
+
+def wos_query_to_generator(query, max_results=MAX_RESULTS, num_retries=NUM_RETRIES):
     raise NotImplementedError
 
 
-def wos_query_to_generator():
-    raise NotImplementedError
-
-
-def wos_result_to_dataframe():
+def wos_result_to_dataframe(result, query=None, initial_request=None):
     raise NotImplementedError
 
 
