@@ -2,5 +2,6 @@ boolean.py==4.0
 dash[cache]==2.15.0
 dash_bootstrap_components==1.5.0
 diskcache==5.6.3
+pandas==2.2.0
 paperscraper==0.2.10
 Pyarrow==15.0.0

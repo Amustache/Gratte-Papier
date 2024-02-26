@@ -5,6 +5,8 @@ import re
 import boolean
 import string
 
+from config import WOS_API_KEY
+
 COOLDOWN = 5
 BATCH_RESULTS = 10
 NUM_RETRIES = 10
@@ -158,7 +160,7 @@ SUPPORTED_PLATFORMS = {
         "fun_query": expression_to_wos_query,
         "fun_generator": wos_query_to_generator,
         "fun_format": wos_result_to_dataframe,
-        "tooltip": "Limitation de deux requêtes par seconde, 50'000 entrées par an. Nécessite une clé d'API.",
-        "disabled": True,
+        "tooltip": f"Limitation de deux requêtes par seconde, 50'000 entrées par an.{' Nécessite une clé API.' if WOS_API_KEY is None else ''}",
+        "disabled": WOS_API_KEY is None,
     }
 }
