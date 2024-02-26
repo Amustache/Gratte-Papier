@@ -32,7 +32,7 @@ else:
 
 app = Dash(
     __name__,
-    external_stylesheets=[dbc.themes.BOOTSTRAP],
+    external_stylesheets=[dbc.themes.BOOTSTRAP, dbc.icons.BOOTSTRAP],
     background_callback_manager=background_callback_manager
 )
 
@@ -59,7 +59,15 @@ controls = dbc.Card([
         html.Div([
             dbc.Label("Platforms", html_for="platforms"),
             dbc.Checklist(
-                options=[{"label": v["name"], "value": k} for k, v in SUPPORTED_PLATFORMS.items()],
+                options=[
+                    {
+                        "label": html.Div([v["name"], html.I(className="bi bi-info") if v["tooltip"] else None]),
+                        "value": k,
+                        "label_id": f"{k}_label",
+                        "disabled": v["disabled"]
+                    }
+                    for k, v in SUPPORTED_PLATFORMS.items()
+                ],
                 value=[],
                 id="platforms",
                 inline=True,
@@ -81,6 +89,13 @@ controls = dbc.Card([
         html.Dl(id="infos", className="row"),
         dbc.Progress(id="progress", animated=True, striped=True, style={"visibility": "hidden"}),
     ]),
+
+    # Tooltips
+    *[
+        dbc.Tooltip(v["tooltip"], target=f"{k}_label", placement="top")
+        for k, v in SUPPORTED_PLATFORMS.items()
+        if v["tooltip"] is not None
+    ],
 ])
 
 # Results

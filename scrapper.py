@@ -142,17 +142,23 @@ SUPPORTED_PLATFORMS = {
         "fun_query": expression_to_arxiv_query,
         "fun_generator": arxiv_query_to_generator,
         "fun_format": arxiv_result_to_dataframe,
+        "tooltip": None,
+        "disabled": False,
     },
     "scholar": {
         "name": "Google Scholar",
         "fun_query": expression_to_scholar_query,
         "fun_generator": scholar_query_to_generator,
         "fun_format": scholar_result_to_dataframe,
+        "tooltip": "Ne donne pas le DOI de l'entrée.",
+        "disabled": False,
     },
     "wos": {
         "name": "Web of Science",
         "fun_query": expression_to_wos_query,
         "fun_generator": wos_query_to_generator,
         "fun_format": wos_result_to_dataframe,
+        "tooltip": "Limitation de deux requêtes par seconde, 50'000 entrées par an. Nécessite une clé d'API.",
+        "disabled": True,
     }
 }
