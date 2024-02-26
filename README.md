@@ -2,8 +2,6 @@
 
 Paper scrapper to gather metadata.
 
-Interface graphique pour la récupération de métadonnées de papiers scientifiques. Permet la préparation de scoping review, de revue de littérature systématique, et de méta analyse.
-
 <!-- TOC start (generated with https://github.com/derlin/bitdowntoc) -->
 
 - [Introduction](#introduction)
@@ -17,7 +15,9 @@ Interface graphique pour la récupération de métadonnées de papiers scientifi
 
 ## Introduction
 
-This project aims to lorem ipsum and I'm a lazy cat. Gratte-Papier basically means Paper Scrapper in French.
+Gratte-Papier basically means Paper Scrapper in French.
+
+Graphical interface for retrieving metadata from scientific papers. Enables the preparation of scoping reviews, systematic literature reviews and meta-analyses.
 
 ## Screenshots
 
@@ -41,7 +41,11 @@ This project requires Python 3.9+.
 
 > Note: One of the dependencies, namely `scholarly`, might use Selenium for antispam purposes. This should not be the case here, as we are querying slowly; however, if it happens to be the case, you need to have a CLI firefox available.
 > 
-> Debian: https://www.linuxcapable.com/how-to-install-firefox-on-debian-linux/
+> Debian: https://www.linuxcapable.com/how-to-install-firefox-on-debian-linux/.
+
+> Note: If you want to use Web of Science, you need to create a `config.py` file with the corresponding API key. A template is available: [`config.py.dist`](./config.py.dist).
+> 
+> More information: https://developer.clarivate.com/apis/wos.
 
 ## Usage
 
